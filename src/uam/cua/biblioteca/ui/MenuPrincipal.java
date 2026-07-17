@@ -4,6 +4,7 @@ import uam.cua.biblioteca.modelo.Libro;
 import uam.cua.biblioteca.modelo.Usuario;
 import uam.cua.biblioteca.modelo.Bibliotecario;
 import uam.cua.biblioteca.modelo.Prestamo;
+import uam.cua.biblioteca.modelo.Persona;
 import uam.cua.biblioteca.servicios.LibroServicio;
 import uam.cua.biblioteca.servicios.PrestamoServicio;
 import uam.cua.biblioteca.consultas.LibroConsulta;
@@ -21,26 +22,25 @@ public class MenuPrincipal {
     private static final Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        // 1. ELIMINACIÓN FÍSICA REAL: Forzamos la destrucción de archivos previos en el disco
+        // Reiniciamos el entorno físico para asegurar pruebas limpias e independientes
         eliminarArchivoFisico("biblioteca.db4o");
-        eliminarArchivoFisico("prueba.db4o");
 
-        // 2. PRECARGA AISLADA: Inyectamos los datos desde cero absoluto
-        precargarDatosEjemplo();
+        // Cargamos la infraestructura base con usuarios activos y sancionados para probar reglas
+        precargarDatosInfraestructura();
 
         int opcion = 0;
         do {
-            System.out.println("\n========================================");
-            System.out.println("   SISTEMA DE BIBLIOTECA - UAM CUA   ");
-            System.out.println("========================================");
-            System.out.println("1. Registrar un nuevo Libro (CRUD - Alta)");
-            System.out.println("2. Listar todos los Libros (CRUD - Leer)");
-            System.out.println("3. Registrar un Prestamo (Relaciones)");
-            System.out.println("4. Registrar Devolucion de Libro");
-            System.out.println("5. Buscar por Autor (Consulta QBE)");
-            System.out.println("6. Búsqueda Combinada Autor/Categoria (Nativa)");
-            System.out.println("7. Salir");
-            System.out.print("Seleccione una opcion: ");
+            System.out.println("\n==================================================");
+            System.out.println("   SISTEMA DE GESTION INSTITUCIONAL - UAM CUA   ");
+            System.out.println("==================================================");
+            System.out.println("1. Alta de Libro (CRUD - Create)");
+            System.out.println("2. Ver Catalogo Completo (CRUD - Read)");
+            System.out.println("3. Solicitar Prestamo (Reglas de Negocio DAO)");
+            System.out.println("4. Devolucion de Ejemplar");
+            System.out.println("5. Busqueda Avanzada por Autor (QBE)");
+            System.out.println("6. Reporte Estadistico Global de Ocupacion (Nativo)");
+            System.out.println("7. Salir del Sistema");
+            System.out.print("Seleccione una opcion del menu: ");
             
             try {
                 opcion = Integer.parseInt(scanner.nextLine());
@@ -50,12 +50,12 @@ public class MenuPrincipal {
                     case 3: menuRegistrarPrestamo(); break;
                     case 4: menuDevolucion(); break;
                     case 5: menuBuscarAutor(); break;
-                    case 6: menuBuscarCombinado(); break;
-                    case 7: System.out.println("Cerrando aplicacion... ¡Exito en tu entrega!"); break;
-                    default: System.out.println("[Alerta] Opcion no valida.");
+                    case 6: menuMostrarEstadisticas(); break;
+                    case 7: System.out.println("Cierre de sesion exitoso. ¡Excelente entrega!"); break;
+                    default: System.out.println("[Alerta] Ingrese una opcion listada.");
                 }
             } catch (NumberFormatException e) {
-                System.out.println("[Error] Ingrese un numero valido.");
+                System.out.println("[Error] La entrada debe ser un digito entero.");
             }
         } while (opcion != 7);
     }
@@ -64,122 +64,142 @@ public class MenuPrincipal {
         try {
             File archivo = new File(nombreArchivo);
             if (archivo.exists()) {
-                System.gc(); // Forzamos al recolector a liberar candados del archivo binario
+                System.gc(); 
                 archivo.delete();
             }
         } catch (Exception e) {
-            // Silencioso si no se puede borrar en el instante
+            // Manejo silencioso en tiempo de ejecución
         }
     }
 
-    private static void precargarDatosEjemplo() {
-        System.out.println("[Entorno] Creando base de datos limpia desde cero...");
+    private static void precargarDatosInfraestructura() {
+        System.out.println("[Entorno] Configurando base de datos limpia...");
         ObjectContainer db = ConexionDb4o.abrir();
         try {
-            // Insertamos los datos semilla utilizando exclusivamente esta instancia viva
-            Usuario u = new Usuario("U001", "Omar Sosa", "omar@uam.mx", "551234", "Activo");
-            Bibliotecario b = new Bibliotecario("B001", "Bibliotecario Cua", "staff@uam.mx", "554321", "EMP-01", "Matutino");
-            db.store(u);
+            // Insertamos dos perfiles de usuario contrastantes para validar las nuevas directrices
+            Usuario u1 = new Usuario("U001", "Omar Sosa (Activo)", "omar@uam.mx", "550011", "Activo");
+            Usuario u2 = new Usuario("U002", "Alumno Sancionado", "bad@uam.mx", "550022", "Sancionado");
+            Bibliotecario b = new Bibliotecario("B001", "Lic. Coordinador Cua", "staff@uam.mx", "5599", "EMP-01", "Matutino");
+            
+            db.store(u1);
+            db.store(u2);
             db.store(b);
-            
-            Libro l1 = new Libro("978-Clean", "Clean Code", "Robert C. Martin", "Tecnologia");
-            Libro l2 = new Libro("978-Rayuela", "Rayuela", "Julio Cortazar", "Novela");
-            db.store(l1);
-            db.store(l2);
-            
-            System.out.println("[Entorno] Inicializacion completa. Cero duplicados.");
+
+            db.store(new Libro("978-Clean", "Clean Code", "Robert C. Martin", "Tecnologia"));
+            db.store(new Libro("978-Rayuela", "Rayuela", "Julio Cortazar", "Novela"));
+            db.store(new Libro("978-Design", "Design Patterns", "Gang of Four", "Tecnologia"));
         } finally {
-            db.close(); // Al cerrar el contenedor aquí, limpiamos por completo la caché de la RAM
+            db.close();
         }
+        System.out.println("[Entorno] Infraestructura inicializada. Listo para operar.");
     }
 
     private static void menuAltaLibro() {
-        System.out.print("Ingrese ISBN: "); String isbn = scanner.nextLine();
-        System.out.print("Ingrese Titulo: "); String titulo = scanner.nextLine();
-        System.out.print("Ingrese Autor: "); String autor = scanner.nextLine();
-        System.out.print("Ingrese Categoria: "); String cat = scanner.nextLine();
-        
+        System.out.print("ISBN: "); String isbn = scanner.nextLine();
+        System.out.print("Título: "); String titulo = scanner.nextLine();
+        System.out.print("Autor: "); String autor = scanner.nextLine();
+        System.out.print("Categoría: "); String cat = scanner.nextLine();
         libroServicio.registrarLibro(new Libro(isbn, titulo, autor, cat));
+        System.out.println("[UI] Registro procesado exitosamente.");
     }
 
     private static void menuListarLibros() {
         System.out.println("\n--- CATALOGO ACTUAL DE LIBROS ---");
         List<Libro> libros = libroServicio.listarTodo();
-        if(libros.isEmpty()) {
-            System.out.println("No hay libros registrados.");
-        } else {
-            for (Libro l : libros) {
-                System.out.println(l);
-            }
-        }
+        for (Libro l : libros) System.out.println(l);
     }
 
-    private static void menuRegistrarPrestamo() {
+private static void menuRegistrarPrestamo() {
         ObjectContainer db = ConexionDb4o.abrir();
         try {
             List<Usuario> usuarios = db.query(Usuario.class);
             List<Bibliotecario> bibliotecarios = db.query(Bibliotecario.class);
             List<Libro> libros = db.query(Libro.class);
 
-            if (usuarios.isEmpty() || bibliotecarios.isEmpty() || libros.isEmpty()) {
-                System.out.println("[Error] Faltan entidades en la base de datos.");
-                return;
+            System.out.println("\n--- SELECCIONAR USUARIO SOLICITANTE ---");
+            for(int i=0; i < usuarios.size(); i++) {
+                System.out.println(i + ") " + usuarios.get(i).getNombre() + " [" + usuarios.get(i).getEstado() + "]");
             }
+            System.out.print("Indice de usuario: ");
+            int idxUser = Integer.parseInt(scanner.nextLine());
 
-            System.out.println("Seleccione el ISBN del libro a prestar:");
-            for (Libro l : libros) {
+            System.out.println("\n--- SELECCIONAR LIBRO DISPONIBLE ---");
+            for(Libro l : libros) {
                 if(l.isDisponible()) System.out.println(" -> " + l.getIsbn() + " : " + l.getTitulo());
             }
-            String isbnEscogido = scanner.nextLine();
+            System.out.print("Escriba el ISBN exacto: ");
+            String isbn = scanner.nextLine();
 
-            Libro libroSeleccionado = null;
+            Libro libroSel = null;
             for(Libro l : libros) {
-                if(l.getIsbn().equals(isbnEscogido) && l.isDisponible()) { 
-                    libroSeleccionado = l; 
-                    break; 
-                }
+                if(l.getIsbn().equals(isbn) && l.isDisponible()) { libroSel = l; break; }
             }
 
-            if (libroSeleccionado != null) {
-                // Modificamos el estado del libro directamente sobre su referencia viva del disco
-                libroSeleccionado.setDisponible(false);
+            if(libroSel != null && idxUser >= 0 && idxUser < usuarios.size()) {
+                Bibliotecario staff = bibliotecarios.isEmpty() ? new Bibliotecario("B001", "Bibliotecario Cua", "staff@uam.mx", "554321", "EMP-01", "Matutino") : bibliotecarios.get(0);
                 
-                // Creamos el registro del prestamo asociando los grafos existentes
-                Prestamo p = new Prestamo(usuarios.get(0), libroSeleccionado, bibliotecarios.get(0));
+                // Creamos un objeto temporal para transportar los datos a la capa de servicios
+                Prestamo p = new Prestamo(usuarios.get(idxUser), libroSel, staff);
                 
-                // Guardamos todo dentro de la misma transaccion abierta para evitar duplicar en memoria
-                db.store(p);
-                db.store(libroSeleccionado);
+                db.close(); // Cerramos la lectura local inmediatamente
                 
-                System.out.println("[SERVICIO] Prestamo registrado exitosamente en sesion unica.");
+                // Dejamos que el servicio y el DAO manejen de forma limpia la persistencia sin clonar
+                prestamoServicio.generarPrestamo(p);
             } else {
-                System.out.println("[Alerta] Libro no encontrado o no disponible.");
+                System.out.println("[UI] Seleccion invalida o el libro no esta disponible.");
+                db.close();
             }
         } catch(Exception e) {
-            System.out.println("[Error] Fallo en el prestamo: " + e.getMessage());
-        } finally {
+            System.out.println("[UI] Error al procesar entrada: " + e.getMessage());
             db.close();
         }
     }
+
     private static void menuDevolucion() {
-        System.out.print("Ingrese el ISBN del libro a devolver: ");
+        System.out.print("ISBN del libro a retornar: ");
         String isbn = scanner.nextLine();
         prestamoServicio.registrarDevolucion(isbn);
     }
 
     private static void menuBuscarAutor() {
-        System.out.print("Ingrese el nombre del Autor: ");
+        System.out.print("Nombre del Autor: ");
         String autor = scanner.nextLine();
         List<Libro> res = libroConsulta.buscarPorAutor(autor);
-        System.out.println("Resultados: " + res.size());
+        System.out.println("\nCoincidencias encontradas: " + res.size());
         for(Libro l : res) System.out.println(l);
     }
 
-    private static void menuBuscarCombinado() {
-        System.out.print("Ingrese el Autor: "); String autor = scanner.nextLine();
-        System.out.print("Ingrese la Categoria: "); String cat = scanner.nextLine();
-        List<Libro> res = libroConsulta.buscarPorAutorYCategoria(autor, cat);
-        System.out.println("Resultados (2 Criterios): " + res.size());
-        for(Libro l : res) System.out.println(l);
+    // FUNCIÓN B: Reporte Estadístico Global (Consulta Agregada Polimórfica)
+    private static void menuMostrarEstadisticas() {
+        ObjectContainer db = ConexionDb4o.abrir();
+        try {
+            List<Libro> libros = db.query(Libro.class);
+            List<Prestamo> prestamos = db.query(Prestamo.class);
+            // Uso de Polimorfismo: recupera tanto Usuarios como Bibliotecarios en un único set
+            List<Persona> totalPersonas = db.query(Persona.class); 
+            List<Usuario> totalUsuarios = db.query(Usuario.class);
+
+            int prestados = 0;
+            for(Libro l : libros) {
+                if(!l.isDisponible()) prestados++;
+            }
+
+            double porcentajeOcupacion = libros.isEmpty() ? 0.0 : ((double)prestados / libros.size()) * 100;
+
+            System.out.println("\n==================================================");
+            System.out.println("   METRICAS Y ESTADISTICAS GLOBALES DE LA BD   ");
+            System.out.println("==================================================");
+            System.out.println(" • Total de Libros en Inventario : " + libros.size());
+            System.out.println(" • Libros en Prestamo Activo     : " + prestados);
+            System.out.println(" • Ejemplares Disponibles        : " + (libros.size() - prestados));
+            System.out.println(" • Tasa de Ocupacion Actual      : " + String.format("%.2f", porcentajeOcupacion) + "%");
+            System.out.println(" ------------------------------------------------");
+            System.out.println(" • Total de Usuarios Alumnos     : " + totalUsuarios.size());
+            System.out.println(" • Personal Registrado (Staff)   : " + (totalPersonas.size() - totalUsuarios.size()));
+            System.out.println(" • Historico Total de Prestamos  : " + prestamos.size());
+            System.out.println("==================================================");
+        } finally {
+            db.close();
+        }
     }
 }
