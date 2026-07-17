@@ -1,0 +1,6 @@
+*.class
+# También es buena idea ignorar las carpetas de compilación comunes:
+/bin/
+/target/
+/out/
+/build/
